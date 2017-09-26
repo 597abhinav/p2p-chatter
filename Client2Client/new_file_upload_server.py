@@ -1,0 +1,58 @@
+import socket
+import threading
+import os
+#import random
+def RetrFile(name, sock):
+    filename = sock.recv(1024)
+    if os.path.isfile(filename):
+        sock.send("EXISTS " + str(os.path.getsize(filename)))
+        userResponse = sock.recv(1024)
+        if userResponse[:2] == 'OK':
+            with open(filename, 'rb') as f:
+                bytesToSend = f.read(1024)
+                sock.send(bytesToSend)
+                while bytesToSend != "":
+                    bytesToSend = f.read(1024)
+                    sock.send(bytesToSend)
+    else:
+        sock.send("ERR ")
+    sock.close()
+def upload_file(name, sock):
+    file_name=sock.recv(1024)
+    file_size=sock.recv(1024)
+    f=open('new_'+file_name,'wb')
+    data= sock.recv(1024)
+    total_recv =len(data)
+    f.write(data)
+    while total_recv < file_size:
+        data=sock.recv(1024)
+        total_recv += len(data)
+        f.write(data)
+        print "{0:.2f}".format((total_recv/float(file_size))*100)+ "% Done"
+        if total_recv==float(file_size):
+            break
+    print"Upload complete"
+    f.close()
+    sock.close()
+    
+def Main():
+    host = "192.168.43.232"
+    port =5000
+    s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+    s.bind((host,port))
+    s.listen(5)
+    print "Server Started. listening on "+host+"::"+str(port)
+    while True:
+        c, addr = s.accept()
+        print "client connedted ip:<" + str(addr) + ">"
+        flag = c.recv(1024)
+        if flag == "--upload":
+            t = threading.Thread(target=upload_file,args=("RetrThread", c))
+        else:
+            t = threading.Thread(target=RetrFile, args=("RetrThread", c))
+        t.start()        
+    s.close()
+if __name__ == '__main__':
+    Main()
+
+
